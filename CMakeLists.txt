@@ -1,33 +1,22 @@
-cmake_minimum_required(VERSION 3.13)
+#
+#  U8g2 component for ESP-IDF + Arduino-as-component
+#
 
-set(COMPONENT_ADD_INCLUDEDIRS csrc)
-file(GLOB COMPONENT_SRCS csrc/*.c)
-file(GLOB COMPONENT_HDRS csrc/*.h)
+# 1) Collect every source file the library has
+file(GLOB_RECURSE U8G2_C_SRC   "csrc/*.c")
+file(GLOB_RECURSE U8G2_CPP_SRC "cppsrc/*.cpp")
 
-if(COMMAND idf_component_register)
-    idf_component_register(SRCS "${COMPONENT_SRCS}" INCLUDE_DIRS csrc)
-    return()
-endif()
+# 2) Register the component
+idf_component_register(
+    SRCS          ${U8G2_C_SRC} ${U8G2_CPP_SRC}
+    INCLUDE_DIRS  csrc cppsrc
+    REQUIRES      arduino-esp32        # pulls in Arduino headers & core
+)
 
-project(u8g2)
+# 3) The C helpers are compiled only if ARDUINO is defined
+target_compile_definitions(${COMPONENT_LIB} PRIVATE ARDUINO=10805)
 
-if(COMMAND register_component)
-    set(COMPONENT_NAME ".")
-    register_component()
-else()
-    add_library(u8g2 ${COMPONENT_SRCS})
-    target_include_directories(u8g2 PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/csrc>" "$<INSTALL_INTERFACE:include>")
-endif()
-
-install(TARGETS u8g2
-        EXPORT u8g2-targets
-        ARCHIVE DESTINATION lib)
-
-install(FILES ${COMPONENT_HDRS}
-        DESTINATION include/u8g2)
-
-install(EXPORT u8g2-targets
-        DESTINATION lib/cmake/u8g2)
-
-install(FILES ${u8g2_SOURCE_DIR}/pkg/u8g2-config.cmake
-        DESTINATION lib/cmake/u8g2)
+# 4) (Optional) silence a few benign warnings that turn into errors at –Werror
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers
+)
